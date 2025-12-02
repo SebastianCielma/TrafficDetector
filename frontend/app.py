@@ -12,7 +12,6 @@ def predict(video):
     if video is None:
         return None
 
-    # 1. Upload
     try:
         with open(video, "rb") as f:
             files = {"file": f}
