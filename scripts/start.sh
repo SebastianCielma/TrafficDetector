@@ -1,12 +1,18 @@
 #!/bin/bash
 
-echo "Backend FastAPI loading.."
+echo "🔍 Weryfikacja..."
+which python
+python -c "import gradio; print('✅ Gradio OK')"
+
+# 1. Start Backendu
+echo "🚀 Backend..."
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 &
 
-echo "Waiting.."
+# 2. Czekanie
+echo "⏳ Czekam 5s..."
 sleep 5
 
-
-echo "Gradio loading..."
+# 3. Start Frontendu
+echo "🚀 Frontend..."
 export API_URL="http://localhost:8000"
 python frontend/app.py

@@ -12,6 +12,6 @@ __pycache__/
 
 .git/
 .gitignore
-data/
 tests/
 .env
+data/
