@@ -4,16 +4,19 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
+    "aiofiles>=24.1.0",
+    "asyncpg>=0.31.0",
     "fastapi[standard]>=0.123.4",
     "gradio>=6.0.2",
     "httpx>=0.28.1",
     "opencv-python-headless>=4.12.0.88",
+    "psycopg[binary]>=3.3.1",
     "pydantic-settings>=2.12.0",
     "python-multipart>=0.0.20",
     "requests>=2.32.5",
+    "sqlmodel>=0.0.27",
     "supervision>=0.27.0",
     "ultralytics>=8.3.234",
-
 ]
 
 [project.optional-dependencies]

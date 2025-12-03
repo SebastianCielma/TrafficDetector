@@ -20,3 +20,7 @@ pytest>=8.0.0
 ruff>=0.6.0
 pre-commit>=3.8.0
 pyright>=1.1.370
+sqlmodel>=0.0.16
+asyncpg>=0.29.0
+psycopg[binary]>=3.1.18
+aiofiles>=23.2.1
