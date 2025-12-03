@@ -1,59 +1,38 @@
-import os
-import shutil
-import uuid
-from typing import Any, Dict
+from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile
 
-from backend.app.api.deps import get_yolo_service
-from backend.app.core.config import settings
-from backend.app.services.yolo import YoloService
+from backend.app.api.deps import get_file_service, get_task_service
+from backend.app.services.file import FileService
+from backend.app.services.task import TaskService
+from backend.app.services.workflow import process_video_workflow
 
 router = APIRouter()
 
-TASKS: Dict[str, Dict[str, Any]] = {}
 
-
-def run_detection_bg(
-    task_id: str, input_path: str, output_path: str, service: YoloService
-):
-    TASKS[task_id] = {"status": "processing"}
-
-    try:
-        service.process_video(input_path, output_path)
-        TASKS[task_id] = {
-            "status": "completed",
-            "result_url": f"/results/{os.path.basename(output_path)}",
-        }
-    except Exception as e:
-        print(f"Error processing task {task_id}: {e}")
-        TASKS[task_id] = {"status": "failed", "error": str(e)}
-
-
-@router.post("/detect")
+@router.post("/detect", response_model=dict[str, str], status_code=202)
 async def detect(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    service: YoloService = Depends(get_yolo_service),
-):
-    task_id = str(uuid.uuid4())
-    input_path = os.path.join(settings.UPLOAD_DIR, f"{task_id}.mp4")
-    output_path = os.path.join(settings.RESULTS_DIR, f"{task_id}.mp4")
+    task_service: TaskService = Depends(get_task_service),
+    file_service: FileService = Depends(get_file_service),
+) -> dict[str, str]:
+    original_filename = file.filename or "unknown.mp4"
 
-    with open(input_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    task = await task_service.create_task(original_filename)
 
-    background_tasks.add_task(
-        run_detection_bg, task_id, input_path, output_path, service
-    )
-    TASKS[task_id] = {"status": "queued"}
+    file_ext = Path(original_filename).suffix.lower()
+    if not file_ext:
+        file_ext = ".mp4"
 
-    return {"task_id": task_id, "status": "queued"}
+    input_filename = f"{task.id}{file_ext}"
 
+    output_filename = f"{task.id}.mp4"
 
-@router.get("/status/{task_id}")
-def status(task_id: str):
-    task = TASKS.get(task_id)
-    if not task:
-        return {"status": "not_found"}
-    return task
+    input_path = await file_service.save_upload(file, input_filename)
+
+    output_path = file_service.get_result_path(output_filename)
+
+    background_tasks.add_task(process_video_workflow, task.id, input_path, output_path)
+
+    return {"task_id": str(task.id), "status": task.status}
