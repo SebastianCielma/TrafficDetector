@@ -50,7 +50,7 @@ jobs:
   deploy:
     name: Deploy to Hugging Face
     needs: test
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 
     steps:
@@ -69,6 +69,6 @@ jobs:
           echo "Starting deployment to Hugging Face..."
           git remote add space https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$SPACE_NAME
 
-          git push --force space main
+          git push --force space HEAD:main
 
           echo "Deployment trigger sent! Check Hugging Face for build status."
