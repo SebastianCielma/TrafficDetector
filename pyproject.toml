@@ -69,3 +69,4 @@ reportGeneralTypeIssues = "warning"
 reportUnknownArgumentType = "none"
 reportUnusedImport = false
 reportPrivateImportUsage = "none"
+reportAttributeAccessIssue = "none"

@@ -26,7 +26,7 @@ class YoloService:
         frame_generator = sv.get_video_frames_generator(input_path)
         box_annotator = sv.BoxAnnotator(thickness=2)
 
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
         writer = cv2.VideoWriter(
             temp_output_path, fourcc, video_info.fps, video_info.resolution_wh
         )
