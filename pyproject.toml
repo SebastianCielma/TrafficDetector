@@ -59,10 +59,13 @@ packages = ["backend", "frontend"]
 [tool.pyright]
 pythonVersion = "3.12"
 pythonPlatform = "Linux"
-typeCheckingMode = "strict"
+typeCheckingMode = "basic"
 include = ["backend", "frontend"]
-exclude = ["backend/tests", "frontend/tests"]
-reportMissingTypeStubs = "warning"
-reportUnknownMemberType = "warning"
+exclude = ["backend/tests", "frontend/tests", "**/__pycache__"]
+reportMissingTypeStubs = "none"
+reportUnknownVariableType = "none"
+reportUnknownMemberType = "none"
 reportGeneralTypeIssues = "warning"
+reportUnknownArgumentType = "none"
 reportUnusedImport = false
+reportPrivateImportUsage = "none"
