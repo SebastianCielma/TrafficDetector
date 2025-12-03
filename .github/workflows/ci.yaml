@@ -1,14 +1,14 @@
-name: CI (Quality & Tests)
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main", "master", "dev" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main" ]
 
 jobs:
   test:
-    name: Run Tests & Quality Checks
+    name: 🧪 Run Tests & Quality Checks
     runs-on: ubuntu-latest
 
     steps:
@@ -30,16 +30,14 @@ jobs:
           sudo apt-get install -y ffmpeg libgl1
 
       - name: Install dependencies
-        run: |
-          uv sync --all-extras --dev
+        run: uv sync --all-extras --dev
 
-
-      - name: Run Ruff (Linter & Formatter check)
+      - name: Run Ruff (Lint)
         run: |
           uv run ruff check .
           uv run ruff format --check .
 
-      - name: Run Pyright (Type Checking)
+      - name: Run Pyright (Types)
         run: uv run pyright
 
       - name: Run Tests (Pytest)
@@ -48,3 +46,29 @@ jobs:
           MODEL_PATH: "yolov8n.pt"
           API_URL: "http://localhost:8000"
         run: uv run pytest -v
+
+  deploy:
+    name: Deploy to Hugging Face
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: "sehastian"
+          SPACE_NAME: "TrafficDetector"
+        run: |
+          echo "Starting deployment to Hugging Face..."
+          git remote add space https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$SPACE_NAME
+
+          git push --force space main
+
+          echo "Deployment trigger sent! Check Hugging Face for build status."
