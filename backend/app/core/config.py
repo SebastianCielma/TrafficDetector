@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     API_URL: str = "http://localhost:8000"
     MODEL_PATH: str = "yolov8n.pt"
 
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://traffic_user:traffic_password@localhost:5432/traffic_db"
+    )
+
     UPLOAD_DIR: str = os.path.join("data", "uploads")
     RESULTS_DIR: str = os.path.join("data", "results")
     API_V1_STR: str = "/api/v1"
