@@ -1,8 +1,11 @@
+import uuid
 from pathlib import Path
+from typing import Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 
 from backend.app.api.deps import get_file_service, get_task_service
+from backend.app.models.task import Task
 from backend.app.services.file import FileService
 from backend.app.services.task import TaskService
 from backend.app.services.workflow import process_video_workflow
@@ -10,13 +13,13 @@ from backend.app.services.workflow import process_video_workflow
 router = APIRouter()
 
 
-@router.post("/detect", response_model=dict[str, str], status_code=202)
+@router.post("/detect", response_model=Dict[str, str], status_code=202)
 async def detect(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     task_service: TaskService = Depends(get_task_service),
     file_service: FileService = Depends(get_file_service),
-) -> dict[str, str]:
+) -> Dict[str, str]:
     original_filename = file.filename or "unknown.mp4"
 
     task = await task_service.create_task(original_filename)
@@ -26,13 +29,27 @@ async def detect(
         file_ext = ".mp4"
 
     input_filename = f"{task.id}{file_ext}"
-
     output_filename = f"{task.id}.mp4"
 
     input_path = await file_service.save_upload(file, input_filename)
-
     output_path = file_service.get_result_path(output_filename)
 
     background_tasks.add_task(process_video_workflow, task.id, input_path, output_path)
 
     return {"task_id": str(task.id), "status": task.status}
+
+
+@router.get("/status/{task_id}", response_model=Task)
+async def status(
+    task_id: str, task_service: TaskService = Depends(get_task_service)
+) -> Task:
+    try:
+        uuid_obj = uuid.UUID(task_id)
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail="Invalid UUID format") from err
+
+    task = await task_service.get_task(uuid_obj)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    return task
