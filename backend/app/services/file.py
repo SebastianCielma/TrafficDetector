@@ -1,4 +1,5 @@
 import os
+from typing import Any, Dict
 
 import aioboto3
 import aiofiles
@@ -20,7 +21,8 @@ class FileService:
         self.results_dir = results_dir
 
         self.session = aioboto3.Session()
-        self.s3_config = {
+
+        self.s3_config: Dict[str, Any] = {
             "endpoint_url": s3_endpoint,
             "aws_access_key_id": access_key,
             "aws_secret_access_key": secret_key,
@@ -38,11 +40,11 @@ class FileService:
 
     async def upload_file_to_s3(self, local_path: str, s3_key: str) -> str:
         try:
-            async with self.session.client("s3", **self.s3_config) as s3:
+            async with self.session.client("s3", **self.s3_config) as s3:  # type: ignore
                 with open(local_path, "rb") as f:
                     await s3.upload_fileobj(f, self.bucket_name, s3_key)
 
-            print(f"☁Uploaded to Storage: {s3_key}")
+            print(f"Uploaded to Storage: {s3_key}")
             return s3_key
         except Exception as e:
             print(f"S3 Upload Error: {e}")
@@ -50,8 +52,8 @@ class FileService:
 
     async def generate_presigned_url(self, s3_key: str, expiration: int = 3600) -> str:
         try:
-            async with self.session.client("s3", **self.s3_config) as s3:
-                url = await s3.generate_presigned_url(
+            async with self.session.client("s3", **self.s3_config) as s3:  # type: ignore
+                url: str = await s3.generate_presigned_url(
                     "get_object",
                     Params={"Bucket": self.bucket_name, "Key": s3_key},
                     ExpiresIn=expiration,
@@ -66,7 +68,7 @@ class FileService:
             if os.path.exists(path):
                 os.remove(path)
         except OSError as e:
-            print(f"Cleanup warning for {path}: {e}")
+            print(f" Cleanup warning for {path}: {e}")
 
     def get_result_path_local(self, filename: str) -> str:
         return os.path.join(self.results_dir, filename)
