@@ -12,6 +12,11 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://traffic_user:traffic_password@localhost:5432/traffic_db"
     )
 
+    S3_BUCKET_NAME: str = ""
+    S3_ENDPOINT: str = ""
+    S3_ACCESS_KEY: str = ""
+    S3_SECRET_KEY: str = ""
+
     UPLOAD_DIR: str = os.path.join("data", "uploads")
     RESULTS_DIR: str = os.path.join("data", "results")
     API_V1_STR: str = "/api/v1"
