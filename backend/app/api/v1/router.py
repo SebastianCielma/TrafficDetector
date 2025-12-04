@@ -5,7 +5,7 @@ from typing import Dict
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
 
 from backend.app.api.deps import get_file_service, get_task_service
-from backend.app.models.task import Task
+from backend.app.models.task import Task, TaskStatus
 from backend.app.services.file import FileService
 from backend.app.services.task import TaskService
 from backend.app.services.workflow import process_video_workflow
@@ -13,7 +13,6 @@ from backend.app.services.workflow import process_video_workflow
 router = APIRouter()
 
 
-# endpoint1
 @router.post("/detect", response_model=Dict[str, str], status_code=202)
 async def detect(
     background_tasks: BackgroundTasks,
@@ -32,8 +31,9 @@ async def detect(
     input_filename = f"{task.id}{file_ext}"
     output_filename = f"{task.id}.mp4"
 
-    input_path = await file_service.save_upload(file, input_filename)
-    output_path = file_service.get_result_path(output_filename)
+    input_path = await file_service.save_upload_locally(file, input_filename)
+
+    output_path = file_service.get_result_path_local(output_filename)
 
     background_tasks.add_task(process_video_workflow, task.id, input_path, output_path)
 
@@ -42,7 +42,9 @@ async def detect(
 
 @router.get("/status/{task_id}", response_model=Task)
 async def status(
-    task_id: str, task_service: TaskService = Depends(get_task_service)
+    task_id: str,
+    task_service: TaskService = Depends(get_task_service),
+    file_service: FileService = Depends(get_file_service),
 ) -> Task:
     try:
         uuid_obj = uuid.UUID(task_id)
@@ -52,5 +54,9 @@ async def status(
     task = await task_service.get_task(uuid_obj)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.status == TaskStatus.COMPLETED and task.result_url:
+        presigned_url = await file_service.generate_presigned_url(task.result_url)
+        task.result_url = presigned_url
 
     return task
