@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ "main","master" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main","master" ]
+    branches: [ "main", "master" ]
 
 jobs:
   test:
@@ -45,12 +45,18 @@ jobs:
           PROJECT_NAME: "TrafficDetectorCI"
           MODEL_PATH: "yolov8n.pt"
           API_URL: "http://localhost:8000"
+
+          DATABASE_URL: "postgresql+asyncpg://user:pass@localhost:5432/test_db"
+          S3_BUCKET_NAME: "ci-test-bucket"
+          S3_ENDPOINT: "https://fake-endpoint.cloudflare.com"
+          S3_ACCESS_KEY: "fake-access-key"
+          S3_SECRET_KEY: "fake-secret-key"
         run: uv run pytest -v
 
   deploy:
-    name: Deploy to Hugging Face
+    name:  Deploy to Hugging Face
     needs: test
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 
     steps:
@@ -66,8 +72,9 @@ jobs:
           HF_USERNAME: "sehastian"
           SPACE_NAME: "TrafficDetector"
         run: |
-          echo "Starting deployment to Hugging Face..."
+          echo " Starting deployment to Hugging Face..."
           git remote add space https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$SPACE_NAME
+
 
           git push --force space HEAD:main
 
