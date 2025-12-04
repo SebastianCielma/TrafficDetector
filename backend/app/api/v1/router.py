@@ -13,6 +13,7 @@ from backend.app.services.workflow import process_video_workflow
 router = APIRouter()
 
 
+# endpoint1
 @router.post("/detect", response_model=Dict[str, str], status_code=202)
 async def detect(
     background_tasks: BackgroundTasks,
