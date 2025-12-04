@@ -24,3 +24,4 @@ sqlmodel>=0.0.16
 asyncpg>=0.29.0
 psycopg[binary]>=3.1.18
 aiofiles>=23.2.1
+aiosqlite>=0.19.0
