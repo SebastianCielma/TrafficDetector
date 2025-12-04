@@ -3,7 +3,6 @@
 echo "🔍 --- DIAGNOSTYKA ZMIENNYCH ŚRODOWISKOWYCH ---"
 echo "Wypisuję nazwy dostępnych zmiennych (bez wartości):"
 
-# Wypisz wszystkie klucze zmiennych środowiskowych
 printenv | cut -d= -f1 | sort
 
 echo "------------------------------------------------"
