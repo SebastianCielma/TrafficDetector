@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     RESULTS_DIR: str = os.path.join("data", "results")
 
     model_config = SettingsConfigDict(
-        env_file=".env", extra="ignore", case_sensitive=True
+        env_file=".env", extra="ignore", case_sensitive=False
     )
 
 
