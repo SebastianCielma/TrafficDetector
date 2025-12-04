@@ -3,6 +3,7 @@ from typing import Any, Dict
 
 import aioboto3
 import aiofiles
+from botocore.config import Config  # <--- NOWY IMPORT
 from fastapi import UploadFile
 
 
@@ -26,6 +27,7 @@ class FileService:
             "endpoint_url": s3_endpoint,
             "aws_access_key_id": access_key,
             "aws_secret_access_key": secret_key,
+            "config": Config(signature_version="s3v4", region_name="auto"),
         }
 
     async def save_upload_locally(self, file: UploadFile, filename: str) -> str:
@@ -68,7 +70,7 @@ class FileService:
             if os.path.exists(path):
                 os.remove(path)
         except OSError as e:
-            print(f" Cleanup warning for {path}: {e}")
+            print(f"Cleanup warning for {path}: {e}")
 
     def get_result_path_local(self, filename: str) -> str:
         return os.path.join(self.results_dir, filename)
