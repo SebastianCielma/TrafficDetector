@@ -6,8 +6,18 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from backend.app.core.config import settings
 
+db_url = settings.DATABASE_URL
+connect_args = {}
+
+if "sslmode=" in db_url:
+    db_url = db_url.replace("?sslmode=require", "").replace("&sslmode=require", "")
+
+
+if "neon.tech" in db_url:
+    connect_args = {"ssl": "require"}
+
 async_engine: AsyncEngine = create_async_engine(
-    settings.DATABASE_URL, echo=False, future=True
+    db_url, echo=False, future=True, connect_args=connect_args
 )
 
 async_session_factory = async_sessionmaker(
