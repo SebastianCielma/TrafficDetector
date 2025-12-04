@@ -4,6 +4,8 @@ import pytest
 
 from frontend.app import predict
 
+# --- FIXTURES ---
+
 
 @pytest.fixture
 def mock_api_url():
@@ -20,15 +22,20 @@ def test_predict_happy_path(
     mock_sleep, mock_file_open, mock_shutil, mock_get, mock_post, mock_api_url
 ):
     mock_post_response = MagicMock()
-    mock_post_response.status_code = 200
+    mock_post_response.status_code = 202
     mock_post_response.json.return_value = {"task_id": "123-abc"}
     mock_post.return_value = mock_post_response
 
     resp_processing = MagicMock()
     resp_processing.json.return_value = {"status": "processing"}
+    resp_processing.status_code = 200
 
     resp_completed = MagicMock()
-    resp_completed.json.return_value = {"status": "completed"}
+    resp_completed.json.return_value = {
+        "status": "completed",
+        "result_url": "/res/vid.mp4",
+    }
+    resp_completed.status_code = 200
 
     resp_download = MagicMock()
     resp_download.status_code = 200
@@ -44,7 +51,7 @@ def test_predict_happy_path(
 
     mock_shutil.assert_called_once()
 
-    assert result == "temp_result_123-abc.mp4"
+    assert result == "result_123-abc.mp4"
 
 
 @patch("frontend.app.requests.post")
@@ -61,10 +68,14 @@ def test_predict_upload_failed(mock_post, mock_api_url):
 @patch("frontend.app.requests.get")
 @patch("frontend.app.time.sleep")
 def test_predict_processing_failed(mock_sleep, mock_get, mock_post, mock_api_url):
-    mock_post.return_value.status_code = 200
+    mock_post.return_value.status_code = 202
     mock_post.return_value.json.return_value = {"task_id": "fail-task"}
 
-    mock_get.return_value.json.return_value = {"status": "failed"}
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = {
+        "status": "failed",
+        "error_message": "Error",
+    }
 
     with patch("builtins.open", mock_open(read_data=b"data")):
         result = predict("video.mp4")
