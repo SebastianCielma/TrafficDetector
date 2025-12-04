@@ -12,43 +12,53 @@ def predict(video):
     if video is None:
         return None
 
+    print(f"📤 Uploading video: {video}")
     try:
         with open(video, "rb") as f:
             files = {"file": f}
             response = requests.post(f"{API_URL}/api/v1/detect", files=files)
 
-        if response.status_code != 200:
+        if response.status_code != 202:
+            print(f"API Error: {response.text}")
             return None
 
         task_id = response.json()["task_id"]
+        print(f"🆔 Task ID: {task_id}")
     except Exception as e:
-        print(f"Błąd połączenia: {e}")
+        print(f"Connection Error: {e}")
         return None
 
     while True:
-        time.sleep(1)
+        time.sleep(2)
         try:
-            res = requests.get(f"{API_URL}/api/v1/status/{task_id}").json()
-            status = res["status"]
+            res = requests.get(f"{API_URL}/api/v1/status/{task_id}")
+            if res.status_code != 200:
+                print(f"⚠️ Status check failed: {res.status_code}")
+                continue
+
+            data = res.json()
+            status = data["status"]
+            print(f"🔄 Status: {status}")
 
             if status == "completed":
-                download_url = f"{API_URL}/results/{task_id}.mp4"
-                local_filename = f"temp_result_{task_id}.mp4"
+                download_url = f"{API_URL}{data['result_url']}"
+                local_filename = f"result_{task_id}.mp4"
 
+                print(f"Downloading result from: {download_url}")
                 with requests.get(download_url, stream=True) as r:
                     r.raise_for_status()
                     with open(local_filename, "wb") as f:
                         shutil.copyfileobj(r.raw, f)
 
+                print("✅ Done!")
                 return local_filename
 
             elif status == "failed":
-                print("Przetwarzanie nieudane po stronie API")
+                print(f" Processing failed: {data.get('error_message')}")
                 return None
 
         except Exception as e:
-            print(f"Błąd podczas odpytywania API: {e}")
-            return None
+            print(f"⚠️ Polling Error: {e}")
 
 
 iface = gr.Interface(
