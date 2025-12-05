@@ -2,20 +2,19 @@ import uuid
 from pathlib import Path
 from typing import Dict
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from backend.app.api.deps import get_file_service, get_task_service
 from backend.app.models.task import Task, TaskStatus
 from backend.app.services.file import FileService
 from backend.app.services.task import TaskService
-from backend.app.services.workflow import process_video_workflow
+from backend.app.worker import celery_process_video
 
 router = APIRouter()
 
 
 @router.post("/detect", response_model=Dict[str, str], status_code=202)
 async def detect(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     task_service: TaskService = Depends(get_task_service),
     file_service: FileService = Depends(get_file_service),
@@ -35,7 +34,7 @@ async def detect(
 
     output_path = file_service.get_result_path_local(output_filename)
 
-    background_tasks.add_task(process_video_workflow, task.id, input_path, output_path)
+    celery_process_video.delay(str(task.id), input_path, output_path)
 
     return {"task_id": str(task.id), "status": task.status}
 
