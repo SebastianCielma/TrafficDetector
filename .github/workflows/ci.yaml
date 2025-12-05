@@ -51,6 +51,7 @@ jobs:
           S3_ENDPOINT: "https://fake-endpoint.cloudflare.com"
           S3_ACCESS_KEY: "fake-access-key"
           S3_SECRET_KEY: "fake-secret-key"
+          CELERY_BROKER_URL: "fake-celery-broker-url"
         run: uv run pytest -v
 
   deploy:
