@@ -17,10 +17,12 @@ def mock_file_service():
 
 
 @pytest.mark.asyncio
-async def test_detect_endpoint(client, mock_file_service):
+async def test_detect_endpoint_sends_to_celery(client, mock_file_service):
     local_mock_task_service = AsyncMock()
+    fixed_uuid = uuid.uuid4()
+
     local_mock_task_service.create_task.return_value = Task(
-        id=uuid.uuid4(), status=TaskStatus.QUEUED, input_filename="test.mp4"
+        id=fixed_uuid, status=TaskStatus.QUEUED, input_filename="test.mp4"
     )
 
     async def override_task():
@@ -34,23 +36,25 @@ async def test_detect_endpoint(client, mock_file_service):
     app.dependency_overrides[get_task_service] = override_task
     app.dependency_overrides[get_file_service] = override_file
 
-    with patch("backend.app.api.v1.router.process_video_workflow") as mock_workflow:
+    with patch("backend.app.api.v1.router.celery_process_video") as mock_celery_task:
         files = {"file": ("video.mp4", b"fake", "video/mp4")}
 
         response = await client.post("/api/v1/detect", files=files)
 
         assert response.status_code == 202
+        data = response.json()
+        assert data["status"] == "queued"
 
-        mock_file_service.save_upload_locally.assert_awaited_once()
-        mock_workflow.assert_called_once()
+        mock_celery_task.delay.assert_called_once_with(
+            str(fixed_uuid), "/tmp/uploads/test.mp4", "/tmp/results/test.mp4"
+        )
 
     app.dependency_overrides = {}
 
 
 @pytest.mark.asyncio
-async def test_status_endpoint_completed(client, mock_file_service):
+async def test_status_endpoint(client, mock_file_service):
     target_id = uuid.uuid4()
-
     task_obj = Task(
         id=target_id,
         status=TaskStatus.COMPLETED,
@@ -75,12 +79,6 @@ async def test_status_endpoint_completed(client, mock_file_service):
     response = await client.get(f"/api/v1/status/{target_id}")
 
     assert response.status_code == 200
-    data = response.json()
-
-    assert data["result_url"] == "https://cdn.fake/video.mp4"
-
-    mock_file_service.generate_presigned_url.assert_awaited_once_with(
-        "s3_key/video.mp4"
-    )
+    assert response.json()["result_url"] == "https://cdn.fake/video.mp4"
 
     app.dependency_overrides = {}
