@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     S3_ACCESS_KEY: str
     S3_SECRET_KEY: str
 
+    CELERY_BROKER_URL: str
+    CELERY_RESULT_BACKEND: str | None = None
+
     UPLOAD_DIR: str = os.path.join("data", "uploads")
     RESULTS_DIR: str = os.path.join("data", "results")
 

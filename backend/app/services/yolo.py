@@ -17,7 +17,7 @@ class YoloService:
         if not os.path.exists(input_path):
             raise FileNotFoundError(f"Input video not found: {input_path}")
 
-        print(f"🎬 Processing video: {input_path}")
+        print(f"Processing video: {input_path}")
 
         video_info = sv.VideoInfo.from_video_path(input_path)
 
