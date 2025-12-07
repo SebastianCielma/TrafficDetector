@@ -49,5 +49,5 @@ async def process_video_workflow(
             await task_service.mark_failed(task, str(e))
 
         finally:
-            file_service.cleanup_local_file(input_path)
-            file_service.cleanup_local_file(output_path)
+            await file_service.cleanup_local_file(input_path)
+            await file_service.cleanup_local_file(output_path)

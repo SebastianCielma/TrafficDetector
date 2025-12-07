@@ -52,6 +52,7 @@ jobs:
           S3_ACCESS_KEY: "fake-access-key"
           S3_SECRET_KEY: "fake-secret-key"
           CELERY_BROKER_URL: "fake-celery-broker-url"
+          CELERY_RESULT_BACKEND: "redis://fake-redis:6379/0"
         run: uv run pytest -v
 
   deploy:
