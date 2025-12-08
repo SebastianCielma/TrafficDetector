@@ -1,28 +1,37 @@
 from contextlib import asynccontextmanager
 
+from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.v1.router import router
 from backend.app.core.config import settings
 from backend.app.core.db import init_db
+from backend.app.core.logger import get_logger, setup_logging
+
+logger = get_logger("main")
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    print(" Initializing Database connection...")
+    setup_logging()
+
+    logger.info("startup", message="Starting Traffic AI System...")
+
     try:
         await init_db()
-        print("Database tables created successfully.")
+        logger.info("db_connected", status="success")
     except Exception as e:
-        print(f"Database connection failed: {e}")
+        logger.error("db_failed", error=str(e))
 
     yield
 
-    print("Shutting down application...")
+    logger.info("shutdown", message="Shutting down...")
 
 
 app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+
+app.add_middleware(CorrelationIdMiddleware)
 
 app.include_router(router, prefix=settings.API_V1_STR)
 app.mount("/results", StaticFiles(directory=settings.RESULTS_DIR), name="results")

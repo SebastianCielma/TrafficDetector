@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Traffic AI"
     API_V1_STR: str = "/api/v1"
 
+    ENVIRONMENT: str = "development"
+
     DATABASE_URL: str
 
     MODEL_PATH: str = "yolov8n.pt"
@@ -18,6 +20,10 @@ class Settings(BaseSettings):
 
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str | None = None
+
+    LOKI_URL: str | None = None
+    LOKI_USERNAME: str | None = None
+    LOKI_PASSWORD: str | None = None
 
     UPLOAD_DIR: str = os.path.join("data", "uploads")
     RESULTS_DIR: str = os.path.join("data", "results")
