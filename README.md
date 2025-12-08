@@ -69,7 +69,7 @@ To run tests locally:
 uv run pytest -v
 ```
 
-## 🗺️ Development Roadmap
+## Development Roadmap
 
 The project is actively developed. Planned features:
 
