@@ -12,5 +12,5 @@ variable "region" {
 variable "github_repo" {
   description = "GitHub Repository name (format: User/Repo)"
   type        = string
-  default     = "sebastiancielma/trafficdetector"
+  default     = "SebastianCielma/TrafficDetector"
 }
