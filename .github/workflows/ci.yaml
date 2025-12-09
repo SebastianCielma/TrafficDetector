@@ -140,4 +140,5 @@ jobs:
             UI_USERNAME=${{ secrets.UI_USERNAME }}
             UI_PASSWORD=${{ secrets.UI_PASSWORD }}
 
+
           flags: '--allow-unauthenticated --port=7860 --memory=2Gi --cpu=1'
