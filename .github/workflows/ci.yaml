@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [ "main", "master" ]
 
+env:
+  GCP_REGION: europe-west1
+  GCP_REPO_NAME: traffic-repo
+  GCP_IMAGE_NAME: traffic-app
+
 jobs:
   test:
     name: 🧪 Run Tests & Quality Checks
@@ -50,12 +55,17 @@ jobs:
           S3_ENDPOINT: "https://fake-endpoint.cloudflare.com"
           S3_ACCESS_KEY: "fake-access-key"
           S3_SECRET_KEY: "fake-secret-key"
+          # Nowe nazwy (TRAFFIC_) dla pewności
+          TRAFFIC_BUCKET_NAME: "ci-test-bucket"
+          TRAFFIC_ENDPOINT: "https://fake-endpoint.cloudflare.com"
+          TRAFFIC_ACCESS_KEY: "fake-access-key"
+          TRAFFIC_SECRET_KEY: "fake-secret-key"
           CELERY_BROKER_URL: "redis://fake-redis:6379/0"
           CELERY_RESULT_BACKEND: "redis://fake-redis:6379/0"
         run: uv run pytest -v
 
   security:
-    name: Security Scan (Trivy)
+    name: 🛡️ Security Scan (Trivy)
     runs-on: ubuntu-latest
     needs: test
 
@@ -76,26 +86,53 @@ jobs:
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
 
-  deploy:
-    name: 🚀 Deploy to Hugging Face
+  deploy-gcp:
+    name: Deploy to Google Cloud Run
     needs: [test, security]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: true
 
-      - name: Push to Hugging Face Space
+      - name: Auth to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build and Push Docker Image
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_USERNAME: "sehastian"
-          SPACE_NAME: "TrafficDetector"
+          IMAGE_TAG: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GCP_REPO_NAME }}/${{ env.GCP_IMAGE_NAME }}:${{ github.sha }}
         run: |
-          echo "Starting deployment to Hugging Face..."
-          git remote add space https://$HF_USERNAME:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/$SPACE_NAME
-          git push --force space HEAD:main
-          echo "Deployment trigger sent!"
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: traffic-api
+          region: ${{ env.GCP_REGION }}
+          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GCP_REPO_NAME }}/${{ env.GCP_IMAGE_NAME }}:${{ github.sha }}
+
+          env_vars: |
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            CELERY_BROKER_URL=${{ secrets.CELERY_BROKER_URL }}
+            S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}
+            S3_ENDPOINT=${{ secrets.S3_ENDPOINT }}
+            S3_ACCESS_KEY=${{ secrets.S3_ACCESS_KEY }}
+            S3_SECRET_KEY=${{ secrets.S3_SECRET_KEY }}
+            LOKI_URL=${{ secrets.LOKI_URL }}
+            LOKI_USERNAME=${{ secrets.LOKI_USERNAME }}
+            LOKI_PASSWORD=${{ secrets.LOKI_PASSWORD }}
+            ENVIRONMENT=production
+
+          flags: '--allow-unauthenticated --port=7860 --memory=2Gi --cpu=1'
