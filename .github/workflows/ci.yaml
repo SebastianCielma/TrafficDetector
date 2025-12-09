@@ -134,5 +134,8 @@ jobs:
             LOKI_USERNAME=${{ secrets.LOKI_USERNAME }}
             LOKI_PASSWORD=${{ secrets.LOKI_PASSWORD }}
             ENVIRONMENT=production
+            API_KEY=${{ secrets.API.KEY }}
+            UI_USERNAME=${{ secrets.UI_USERNAME }}
+            UI_PASSWORD=${{ secrets.UI_PASSWORD }}
 
           flags: '--allow-unauthenticated --port=7860 --memory=2Gi --cpu=1'
