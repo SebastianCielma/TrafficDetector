@@ -55,13 +55,15 @@ jobs:
           S3_ENDPOINT: "https://fake-endpoint.cloudflare.com"
           S3_ACCESS_KEY: "fake-access-key"
           S3_SECRET_KEY: "fake-secret-key"
-          # Nowe nazwy (TRAFFIC_) dla pewności
           TRAFFIC_BUCKET_NAME: "ci-test-bucket"
           TRAFFIC_ENDPOINT: "https://fake-endpoint.cloudflare.com"
           TRAFFIC_ACCESS_KEY: "fake-access-key"
           TRAFFIC_SECRET_KEY: "fake-secret-key"
           CELERY_BROKER_URL: "redis://fake-redis:6379/0"
           CELERY_RESULT_BACKEND: "redis://fake-redis:6379/0"
+          API_KEY: "ci-secret-key"
+          UI_USERNAME: "ci-user"
+          UI_PASSWORD: "ci-password"
         run: uv run pytest -v
 
   security:
