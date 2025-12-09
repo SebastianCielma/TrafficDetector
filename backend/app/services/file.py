@@ -31,7 +31,7 @@ class FileService:
             "endpoint_url": s3_endpoint,
             "aws_access_key_id": access_key,
             "aws_secret_access_key": secret_key,
-            "config": Config(signature_version="s3v4", region_name="auto"),
+            "config": Config(signature_version="s3v4", region_name="us-east-1"),
         }
 
     async def save_upload_locally(self, file: UploadFile, filename: str) -> str:
