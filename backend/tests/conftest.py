@@ -10,9 +10,13 @@ os.environ["S3_BUCKET_NAME"] = "test-bucket"
 os.environ["S3_ENDPOINT"] = "http://test-s3"
 os.environ["S3_ACCESS_KEY"] = "test-key"
 os.environ["S3_SECRET_KEY"] = "test-secret"
-os.environ["CELERY_BROKER_URL"] = "redis://test"
-os.environ["CELERY_RESULT_BACKEND"] = "redis://test"
+os.environ["CELERY_BROKER_URL"] = "memory://"
+os.environ["CELERY_RESULT_BACKEND"] = "db+sqlite:///results.db"
 os.environ["DATABASE_URL"] = "postgresql+asyncpg://test"
+
+os.environ["API_KEY"] = "test-secret-key"
+os.environ["UI_USERNAME"] = "admin"
+os.environ["UI_PASSWORD"] = "password"
 
 
 @pytest.fixture(scope="session")

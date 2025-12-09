@@ -1,4 +1,11 @@
-from backend.app.core.config import Settings
+import os
+
+from backend.app.core.config import Settings, settings
+
+
+def test_directories_created():
+    assert os.path.exists(settings.UPLOAD_DIR)
+    assert os.path.exists(settings.RESULTS_DIR)
 
 
 def test_pydantic_settings_env_precedence(monkeypatch):
@@ -9,11 +16,10 @@ def test_pydantic_settings_env_precedence(monkeypatch):
         "S3_ENDPOINT": "https://fake-endpoint",
         "S3_ACCESS_KEY": "fake-key",
         "S3_SECRET_KEY": "fake-secret",
-        "TRAFFIC_BUCKET_NAME": "test-bucket",
-        "TRAFFIC_ENDPOINT": "https://fake-endpoint",
-        "TRAFFIC_ACCESS_KEY": "fake-key",
-        "TRAFFIC_SECRET_KEY": "fake-secret",
         "CELERY_BROKER_URL": "redis://fake-redis:6379/0",
+        "API_KEY": "test-secret-key",
+        "UI_USERNAME": "admin",
+        "UI_PASSWORD": "password",
     }
 
     for key, value in env_vars.items():
@@ -22,3 +28,4 @@ def test_pydantic_settings_env_precedence(monkeypatch):
     test_settings = Settings(_env_file=None)
 
     assert test_settings.PROJECT_NAME == "Test Unit Project"
+    assert test_settings.API_KEY == "test-secret-key"
