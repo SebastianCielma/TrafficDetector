@@ -4,14 +4,14 @@ from typing import Dict
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-#
 from backend.app.api.deps import get_file_service, get_task_service
+from backend.app.core.security import verify_api_key
 from backend.app.models.task import Task, TaskStatus
 from backend.app.services.file import FileService
 from backend.app.services.task import TaskService
 from backend.app.worker import celery_process_video
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(verify_api_key)])
 
 
 @router.post("/detect", response_model=Dict[str, str], status_code=202)
@@ -21,7 +21,6 @@ async def detect(
     file_service: FileService = Depends(get_file_service),
 ) -> Dict[str, str]:
     original_filename = file.filename or "unknown.mp4"
-
     task = await task_service.create_task(original_filename)
 
     file_ext = Path(original_filename).suffix.lower()
@@ -32,7 +31,6 @@ async def detect(
     output_filename = f"{task.id}.mp4"
 
     input_path = await file_service.save_upload_locally(file, input_filename)
-
     output_path = file_service.get_result_path_local(output_filename)
 
     celery_process_video.delay(str(task.id), input_path, output_path)

@@ -6,6 +6,9 @@ import gradio as gr
 import requests
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
+API_KEY = os.getenv("API_KEY", "dev-secret-key")
+UI_USER = os.getenv("UI_USERNAME", "admin")
+UI_PASS = os.getenv("UI_PASSWORD", "admin")
 
 
 def predict(video):
@@ -13,10 +16,19 @@ def predict(video):
         return None
 
     print(f"Uploading video: {video}")
+
+    headers = {"X-API-KEY": API_KEY}
+
     try:
         with open(video, "rb") as f:
             files = {"file": f}
-            response = requests.post(f"{API_URL}/api/v1/detect", files=files)
+            response = requests.post(
+                f"{API_URL}/api/v1/detect", files=files, headers=headers
+            )
+
+        if response.status_code == 403:
+            print("Access Denied: Invalid API Key")
+            return None
 
         if response.status_code != 202:
             print(f"API Error: {response.text}")
@@ -31,7 +43,12 @@ def predict(video):
     while True:
         time.sleep(2)
         try:
-            res = requests.get(f"{API_URL}/api/v1/status/{task_id}")
+            res = requests.get(f"{API_URL}/api/v1/status/{task_id}", headers=headers)
+
+            if res.status_code == 403:
+                print("Access Denied during polling")
+                return None
+
             if res.status_code != 200:
                 print(f"Status check failed: {res.status_code}")
                 continue
@@ -42,14 +59,12 @@ def predict(video):
 
             if status == "completed":
                 raw_url = data["result_url"]
-
                 if raw_url.startswith("http"):
                     download_url = raw_url
                 else:
                     download_url = f"{API_URL}{raw_url}"
 
                 local_filename = f"result_{task_id}.mp4"
-
                 print(f"Downloading result from: {download_url}")
 
                 with requests.get(download_url, stream=True) as r:
@@ -69,8 +84,11 @@ def predict(video):
 
 
 iface = gr.Interface(
-    fn=predict, inputs=gr.Video(), outputs=gr.Video(), title="Traffic AI Master"
+    fn=predict,
+    inputs=gr.Video(),
+    outputs=gr.Video(),
+    title="Traffic AI Master - Secure Gateway",
 )
 
 if __name__ == "__main__":
-    iface.launch(server_name="0.0.0.0", server_port=7860)
+    iface.launch(server_name="0.0.0.0", server_port=7860, auth=(UI_USER, UI_PASS))
