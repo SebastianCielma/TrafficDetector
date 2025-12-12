@@ -1,5 +1,6 @@
 import os
 from typing import AsyncGenerator
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -29,3 +30,16 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
+
+
+@pytest.fixture
+def mock_db_session_factory():
+    mock_session = AsyncMock()
+    mock_db_manager = MagicMock()
+    mock_db_manager.__aenter__.return_value = mock_session
+    mock_db_manager.__aexit__.return_value = None
+
+    mock_factory = MagicMock()
+    mock_factory.return_value = mock_db_manager
+
+    return mock_factory, mock_session
