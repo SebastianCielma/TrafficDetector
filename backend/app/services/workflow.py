@@ -1,5 +1,4 @@
 import os
-import time
 import uuid
 
 import structlog
@@ -20,8 +19,6 @@ async def process_video_workflow(
 ) -> None:
     structlog.contextvars.bind_contextvars(task_id=str(task_id))
 
-    start_time = time.time()
-
     async with async_session_factory() as session:
         task_service = TaskService(session)
         yolo_service = YoloService()
@@ -37,33 +34,41 @@ async def process_video_workflow(
 
         task = await task_service.get_task(task_id)
         if not task:
-            logger.warning("task_not_found_db")
+            logger.warning("task_not_found_in_db")
             return
 
         await task_service.mark_processing(task)
 
+        json_path: str | None = None
+
         try:
-            logger.info("processing_started", input=input_path)
+            logger.info("workflow_started", input_path=input_path)
 
-            await run_in_threadpool(yolo_service.process_video, input_path, output_path)
-
-            s3_key = f"results/{os.path.basename(output_path)}"
-            await file_service.upload_file_to_s3(output_path, s3_key)
-
-            await task_service.mark_completed(task, s3_key)
-
-            duration = time.time() - start_time
-            logger.info(
-                "processing_finished",
-                status="success",
-                duration_seconds=round(duration, 2),
+            json_path = await run_in_threadpool(
+                yolo_service.process_video, input_path, output_path
             )
 
+            video_s3_key = f"results/{os.path.basename(output_path)}"
+            await file_service.upload_file_to_s3(output_path, video_s3_key)
+
+            if json_path and os.path.exists(json_path):
+                json_s3_key = f"analytics/{task_id}.json"
+                await file_service.upload_file_to_s3(json_path, json_s3_key)
+                logger.info("analytics_uploaded", s3_key=json_s3_key)
+
+            await task_service.mark_completed(task, video_s3_key)
+
+            logger.info("workflow_finished", status="success")
+
         except Exception as e:
-            logger.exception("processing_failed", error=str(e))
+            logger.exception("workflow_failed", error=str(e))
             await task_service.mark_failed(task, str(e))
 
         finally:
             await file_service.cleanup_local_file(input_path)
             await file_service.cleanup_local_file(output_path)
+
+            if json_path:
+                await file_service.cleanup_local_file(json_path)
+
             structlog.contextvars.clear_contextvars()
