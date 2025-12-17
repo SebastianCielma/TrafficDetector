@@ -2,7 +2,6 @@
 
 
 touch .env
-
 echo "DATABASE_URL=$DATABASE_URL" >> .env
 echo "CELERY_BROKER_URL=$CELERY_BROKER_URL" >> .env
 echo "S3_BUCKET_NAME=$S3_BUCKET_NAME" >> .env
@@ -17,14 +16,16 @@ echo "API_KEY=$API_KEY" >> .env
 echo "UI_USERNAME=$UI_USERNAME" >> .env
 echo "UI_PASSWORD=$UI_PASSWORD" >> .env
 
+echo "GCS_BUCKET_NAME=$GCS_BUCKET_NAME" >> .env
 
-echo " Backend FastAPI..."
+
+echo "Backend FastAPI..."
 uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 &
 
 echo "Celery Worker..."
 celery -A backend.app.core.celery_app worker --loglevel=info --concurrency=1 &
 
-echo "Waiting..."
+echo "Waiting"
 sleep 10
 
 echo "Frontend Gradio..."

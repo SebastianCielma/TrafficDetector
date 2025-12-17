@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     S3_ACCESS_KEY: str
     S3_SECRET_KEY: str
 
+    GCS_BUCKET_NAME: str
+
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str | None = None
 
@@ -30,6 +32,7 @@ class Settings(BaseSettings):
 
     UPLOAD_DIR: str = os.path.join("data", "uploads")
     RESULTS_DIR: str = os.path.join("data", "results")
+    GCS_BUCKET_NAME = "traffic-ai-prod-analytics-data"
 
     model_config = SettingsConfigDict(
         env_file=".env", extra="ignore", case_sensitive=False

@@ -13,7 +13,7 @@ env:
 
 jobs:
   test:
-    name: 🧪 Run Tests & Quality Checks
+    name:  Run Tests & Quality Checks
     runs-on: ubuntu-latest
 
     steps:
