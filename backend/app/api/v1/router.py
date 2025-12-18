@@ -1,32 +1,72 @@
 import uuid
 from pathlib import Path
-from typing import Dict
 
-#
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from backend.app.api.deps import get_file_service, get_task_service
 from backend.app.core.security import verify_api_key
 from backend.app.models.task import Task, TaskStatus
+from backend.app.schemas.detection import DetectionResponse
 from backend.app.services.file import FileService
 from backend.app.services.task import TaskService
 from backend.app.worker import celery_process_video
 
 router = APIRouter(dependencies=[Depends(verify_api_key)])
 
+# Allowed video file extensions
+ALLOWED_EXTENSIONS: frozenset[str] = frozenset(
+    {".mp4", ".avi", ".mov", ".mkv", ".webm"}
+)
 
-@router.post("/detect", response_model=Dict[str, str], status_code=202)
+
+def _validate_video_file(file: UploadFile) -> str:
+    """Validate the uploaded file is a supported video format.
+
+    Args:
+        file: The uploaded file.
+
+    Returns:
+        The validated file extension.
+
+    Raises:
+        HTTPException: If the file format is not supported.
+    """
+    filename = file.filename or "unknown.mp4"
+    file_ext = Path(filename).suffix.lower()
+
+    if not file_ext:
+        file_ext = ".mp4"
+
+    if file_ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported file format: {file_ext}. "
+            f"Allowed formats: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
+    return file_ext
+
+
+@router.post("/detect", response_model=DetectionResponse, status_code=202)
 async def detect(
     file: UploadFile = File(...),
     task_service: TaskService = Depends(get_task_service),
     file_service: FileService = Depends(get_file_service),
-) -> Dict[str, str]:
-    original_filename = file.filename or "unknown.mp4"
-    task = await task_service.create_task(original_filename)
+) -> DetectionResponse:
+    """Submit a video for traffic detection processing.
 
-    file_ext = Path(original_filename).suffix.lower()
-    if not file_ext:
-        file_ext = ".mp4"
+    Args:
+        file: The video file to process.
+        task_service: Service for task management.
+        file_service: Service for file operations.
+
+    Returns:
+        Response containing task ID and initial status.
+    """
+    original_filename = file.filename or "unknown.mp4"
+    file_ext = _validate_video_file(file)
+
+    task = await task_service.create_task(original_filename)
 
     input_filename = f"{task.id}{file_ext}"
     output_filename = f"{task.id}.mp4"
@@ -36,7 +76,7 @@ async def detect(
 
     celery_process_video.delay(str(task.id), input_path, output_path)
 
-    return {"task_id": str(task.id), "status": task.status}
+    return DetectionResponse(task_id=str(task.id), status=task.status)
 
 
 @router.get("/status/{task_id}", response_model=Task)
@@ -45,6 +85,19 @@ async def status(
     task_service: TaskService = Depends(get_task_service),
     file_service: FileService = Depends(get_file_service),
 ) -> Task:
+    """Get the status of a video processing task.
+
+    Args:
+        task_id: The UUID of the task.
+        task_service: Service for task management.
+        file_service: Service for file operations.
+
+    Returns:
+        The task with its current status.
+
+    Raises:
+        HTTPException: If task_id is invalid or task not found.
+    """
     try:
         uuid_obj = uuid.UUID(task_id)
     except ValueError as err:
