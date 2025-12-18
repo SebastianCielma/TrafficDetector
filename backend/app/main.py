@@ -11,12 +11,13 @@ from backend.app.core.logger import get_logger, setup_logging
 
 logger = get_logger("main")
 
+init_directories()
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     """Application lifespan manager for startup and shutdown events."""
     setup_logging()
-    init_directories()
 
     logger.info("startup", message="Starting Traffic AI System...")
 
