@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     )
 
 
-settings = Settings()
+settings = Settings()  # type: ignore
 
 
 def init_directories() -> None:
