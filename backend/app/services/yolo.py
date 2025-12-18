@@ -1,8 +1,7 @@
-import os
+import shutil
 import subprocess
 from collections import Counter
 from pathlib import Path
-from typing import List
 
 import cv2
 import supervision as sv
@@ -20,16 +19,58 @@ from backend.app.schemas.analytics import (
 logger = get_logger(__name__)
 
 
+class YoloServiceError(Exception):
+    """Base exception for YoloService errors."""
+
+
+class FfmpegNotFoundError(YoloServiceError):
+    """Raised when ffmpeg is not found in the system."""
+
+
+class VideoProcessingError(YoloServiceError):
+    """Raised when video processing fails."""
+
+
 class YoloService:
+    """Service for video processing using YOLO object detection."""
+
     def __init__(self) -> None:
-        logger.info(f"Loading YOLO model from {settings.MODEL_PATH}...")
-        # type: ignore
+        """Initialize the YOLO service and verify dependencies."""
+        self._verify_ffmpeg()
+        logger.info("yolo_model_loading", model_path=settings.MODEL_PATH)
         self.model = YOLO(settings.MODEL_PATH)
+        logger.info("yolo_model_loaded")
+
+    def _verify_ffmpeg(self) -> None:
+        """Verify that ffmpeg is available in the system.
+
+        Raises:
+            FfmpegNotFoundError: If ffmpeg is not found.
+        """
+        if shutil.which("ffmpeg") is None:
+            raise FfmpegNotFoundError(
+                "ffmpeg is not installed or not in PATH. "
+                "Please install ffmpeg to enable video conversion."
+            )
 
     def process_video(
         self, input_path: str, output_path: str, conf: float = 0.25
     ) -> str:
-        if not os.path.exists(input_path):
+        """Process a video file with YOLO object detection.
+
+        Args:
+            input_path: Path to the input video file.
+            output_path: Path for the output annotated video.
+            conf: Confidence threshold for detections.
+
+        Returns:
+            Path to the generated analytics JSON file.
+
+        Raises:
+            FileNotFoundError: If input video doesn't exist.
+            VideoProcessingError: If video processing fails.
+        """
+        if not Path(input_path).exists():
             raise FileNotFoundError(f"Input video not found: {input_path}")
 
         in_p = Path(input_path)
@@ -44,13 +85,13 @@ class YoloService:
         frame_generator = sv.get_video_frames_generator(str(in_p))
         box_annotator = sv.BoxAnnotator(thickness=2)
 
-        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
         writer = cv2.VideoWriter(
             str(temp_video_path), fourcc, video_info.fps, video_info.resolution_wh
         )
 
         total_counts: Counter[str] = Counter()
-        time_series_data: List[FrameDetection] = []
+        time_series_data: list[FrameDetection] = []
         processed_frames = 0
 
         try:
@@ -65,7 +106,7 @@ class YoloService:
 
                 if detections.class_id is not None:
                     class_names = [
-                        self.model.model.names[cid]  # type: ignore
+                        self.model.model.names[cid]  # type: ignore[union-attr]
                         for cid in detections.class_id
                     ]
 
@@ -86,7 +127,7 @@ class YoloService:
             writer.release()
 
             if processed_frames == 0:
-                raise RuntimeError("No frames processed.")
+                raise VideoProcessingError("No frames were processed from the video.")
 
             report = self._build_report(
                 video_info, in_p.name, total_counts, time_series_data
@@ -100,7 +141,7 @@ class YoloService:
 
         except Exception as e:
             logger.error("processing_failed", error=str(e))
-            raise e
+            raise VideoProcessingError(f"Video processing failed: {e}") from e
         finally:
             self._cleanup(str(temp_video_path), writer)
 
@@ -111,20 +152,31 @@ class YoloService:
         info: sv.VideoInfo,
         filename: str,
         counts: Counter[str],
-        series: List[FrameDetection],
+        series: list[FrameDetection],
     ) -> AnalyticsReport:
+        """Build an analytics report from processed video data.
+
+        Args:
+            info: Video information from supervision.
+            filename: Original filename.
+            counts: Total detection counts per class.
+            series: Time series of frame detections.
+
+        Returns:
+            Complete analytics report.
+        """
         most_common = counts.most_common(1)
 
-        tf = info.total_frames or 0
+        total_frames = info.total_frames or 0
         duration = 0.0
         if info.fps > 0:
-            duration = round(tf / info.fps, 2)
+            duration = round(total_frames / info.fps, 2)
 
         return AnalyticsReport(
             meta=VideoMeta(
                 source_filename=filename,
                 fps=info.fps,
-                total_frames=tf,
+                total_frames=total_frames,
                 resolution=info.resolution_wh,
                 duration_seconds=duration,
             ),
@@ -138,32 +190,52 @@ class YoloService:
         )
 
     def _convert_to_h264(self, source: str, target: str) -> None:
-        subprocess.run(
-            [
-                "ffmpeg",
-                "-y",
-                "-i",
-                source,
-                "-vcodec",
-                "libx264",
-                "-acodec",
-                "aac",
-                "-strict",
-                "experimental",
-                target,
-            ],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        """Convert video to H.264 codec using ffmpeg.
+
+        Args:
+            source: Source video path.
+            target: Target video path.
+
+        Raises:
+            VideoProcessingError: If conversion fails.
+        """
+        try:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-i",
+                    source,
+                    "-vcodec",
+                    "libx264",
+                    "-acodec",
+                    "aac",
+                    "-strict",
+                    "experimental",
+                    target,
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except subprocess.CalledProcessError as e:
+            raise VideoProcessingError(f"ffmpeg conversion failed: {e}") from e
 
     def _cleanup(self, temp_path: str, writer: cv2.VideoWriter) -> None:
+        """Clean up temporary resources.
+
+        Args:
+            temp_path: Path to temporary video file.
+            writer: OpenCV video writer to release.
+        """
         try:
             writer.release()
         except Exception:
             pass
-        if os.path.exists(temp_path):
+
+        temp_file = Path(temp_path)
+        if temp_file.exists():
             try:
-                os.remove(temp_path)
+                temp_file.unlink()
             except OSError as e:
-                logger.warning(f"Could not remove temp file: {e}")
+                logger.warning("temp_file_cleanup_failed", path=temp_path, error=str(e))
