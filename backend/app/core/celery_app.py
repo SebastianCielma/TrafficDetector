@@ -1,3 +1,5 @@
+"""Celery application configuration for background task processing."""
+
 from celery import Celery
 
 from backend.app.core.config import settings

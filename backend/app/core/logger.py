@@ -1,6 +1,5 @@
 import logging
 import sys
-from typing import List
 
 import structlog
 from asgi_correlation_id import correlation_id
@@ -9,15 +8,26 @@ from logging_loki import LokiHandler
 from backend.app.core.config import settings
 
 
-def setup_logging():
-    shared_processors = [
+def setup_logging() -> None:
+    """Configure structured logging with optional Loki integration.
+
+    Sets up structlog with appropriate processors for development
+    (console output) or production (JSON output) environments.
+    Optionally configures Loki handler if credentials are provided.
+    """
+    shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
         structlog.processors.TimeStamper(fmt="iso"),
     ]
 
-    def add_correlation(logger, method_name, event_dict):
+    def add_correlation(
+        logger: logging.Logger,
+        method_name: str,
+        event_dict: structlog.types.EventDict,
+    ) -> structlog.types.EventDict:
+        """Add correlation ID to log events if available."""
         if request_id := correlation_id.get():
             event_dict["request_id"] = request_id
         return event_dict
@@ -25,7 +35,7 @@ def setup_logging():
     shared_processors.append(add_correlation)
 
     if settings.ENVIRONMENT == "production":
-        renderer = structlog.processors.JSONRenderer()
+        renderer: structlog.types.Processor = structlog.processors.JSONRenderer()
     else:
         renderer = structlog.dev.ConsoleRenderer()
 
@@ -50,7 +60,7 @@ def setup_logging():
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setFormatter(formatter)
 
-    handlers: List[logging.Handler] = [stream_handler]
+    handlers: list[logging.Handler] = [stream_handler]
 
     if settings.LOKI_URL and settings.LOKI_USERNAME and settings.LOKI_PASSWORD:
         loki_handler = LokiHandler(
@@ -68,5 +78,13 @@ def setup_logging():
     logging.getLogger("uvicorn.access").propagate = True
 
 
-def get_logger(name: str):
+def get_logger(name: str) -> structlog.stdlib.BoundLogger:
+    """Get a structured logger instance.
+
+    Args:
+        name: Name for the logger (typically module name).
+
+    Returns:
+        A bound structlog logger instance.
+    """
     return structlog.get_logger(name)

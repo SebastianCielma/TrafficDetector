@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.v1.router import router
-from backend.app.core.config import settings
+from backend.app.core.config import init_directories, settings
 from backend.app.core.db import init_db
 from backend.app.core.logger import get_logger, setup_logging
 
@@ -14,7 +14,9 @@ logger = get_logger("main")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    """Application lifespan manager for startup and shutdown events."""
     setup_logging()
+    init_directories()
 
     logger.info("startup", message="Starting Traffic AI System...")
 

@@ -6,6 +6,8 @@ from sqlmodel import Field, SQLModel
 
 
 class TaskStatus(StrEnum):
+    """Enumeration of possible task statuses."""
+
     QUEUED = "queued"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -13,7 +15,9 @@ class TaskStatus(StrEnum):
 
 
 class Task(SQLModel, table=True):
-    __tablename__: str = "tasks"  # type: ignore
+    """Database model representing a video processing task."""
+
+    __tablename__: str = "tasks"  # type: ignore[assignment]
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 
@@ -23,6 +27,4 @@ class Task(SQLModel, table=True):
     result_url: str | None = None
     error_message: str | None = None
 
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
