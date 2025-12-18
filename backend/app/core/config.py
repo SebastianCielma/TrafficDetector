@@ -1,13 +1,16 @@
-import os
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
+
     PROJECT_NAME: str = "Traffic AI"
     API_V1_STR: str = "/api/v1"
 
     DATABASE_URL: str
+    DATABASE_SSL_REQUIRED: bool = False
 
     MODEL_PATH: str = "yolov8n.pt"
 
@@ -18,9 +21,10 @@ class Settings(BaseSettings):
 
     GCS_BUCKET_NAME: str
 
+    BIGQUERY_DATASET: str = "traffic_analytics"
+
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str | None = None
-
     LOKI_URL: str | None = None
     LOKI_USERNAME: str | None = None
     LOKI_PASSWORD: str | None = None
@@ -30,16 +34,20 @@ class Settings(BaseSettings):
     UI_USERNAME: str
     UI_PASSWORD: str
 
-    UPLOAD_DIR: str = os.path.join("data", "uploads")
-    RESULTS_DIR: str = os.path.join("data", "results")
-    GCS_BUCKET_NAME = "traffic-ai-prod-analytics-data"
+    UPLOAD_DIR: str = "data/uploads"
+    RESULTS_DIR: str = "data/results"
 
     model_config = SettingsConfigDict(
-        env_file=".env", extra="ignore", case_sensitive=False
+        env_file=".env",
+        extra="ignore",
+        case_sensitive=False,
     )
 
 
-settings = Settings()  # type: ignore
+settings = Settings()
 
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-os.makedirs(settings.RESULTS_DIR, exist_ok=True)
+
+def init_directories() -> None:
+    """Initialize required directories for file uploads and results."""
+    Path(settings.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
+    Path(settings.RESULTS_DIR).mkdir(parents=True, exist_ok=True)
