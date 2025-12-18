@@ -11,8 +11,6 @@ logger = structlog.get_logger(__name__)
 
 
 class BigQueryService:
-    """Service for inserting analytics reports into BigQuery."""
-
     def __init__(self, dataset_id: str, client: bigquery.Client | None = None) -> None:
         self.client = client
         self.dataset_id = dataset_id
